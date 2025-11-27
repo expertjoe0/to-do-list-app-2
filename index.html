@@ -1,41 +1,33 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>To Do List - AI Powered</title>
-    <link rel="manifest" href="manifest.json" />
+    <link rel="manifest" href="manifest.json">
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
         theme: {
           extend: {
-            fontFamily: {
-              sans: ['Nunito', 'sans-serif'],
-            },
+            fontFamily: { sans: ['Nunito', 'sans-serif'] },
             colors: {
-              primary: {
-                50: '#f0f9ff',
-                100: '#e0f2fe',
-                500: '#0ea5e9',
-                600: '#0284c7',
-                700: '#0369a1',
-              }
+              primary: { 50: '#f0f9ff', 100: '#e0f2fe', 500: '#0ea5e9', 600: '#0284c7', 700: '#0369a1' }
             },
             animation: {
-              'bounce-short': 'bounce-short 0.5s ease-in-out 1',
               'slide-up': 'slide-up 0.3s ease-out forwards',
+              'bounce-short': 'bounce-short 0.5s ease-in-out 1',
               'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
             },
             keyframes: {
-              'bounce-short': {
-                '0%, 100%': { transform: 'translateY(0)' },
-                '50%': { transform: 'translateY(-25%)' },
-              },
               'slide-up': {
                 '0%': { transform: 'translateY(20px)', opacity: '0' },
                 '100%': { transform: 'translateY(0)', opacity: '1' },
+              },
+              'bounce-short': {
+                '0%, 100%': { transform: 'translateY(0)' },
+                '50%': { transform: 'translateY(-25%)' },
               }
             }
           }
@@ -48,53 +40,213 @@
         background-attachment: fixed;
         -webkit-tap-highlight-color: transparent;
       }
-      /* Custom scrollbar for webkit */
-      ::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
-      }
-      ::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 10px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8;
-      }
-      
       .glass {
         background: rgba(255, 255, 255, 0.7);
         backdrop-filter: blur(10px);
         -webkit-backdrop-filter: blur(10px);
       }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      /* Checkbox animation styles */
+      .checkbox-wrapper:active { transform: scale(0.9); }
     </style>
-  <script type="importmap">
+    <!-- Instructions for Netlify:
+         1. Deploy this folder to Netlify.
+         2. Go to Site Settings > Build & Deploy > Post Processing > Snippet Injection.
+         3. Add a "Script" to the "Before <script type="importmap">
 {
   "imports": {
-    "react": "https://aistudiocdn.com/react@^19.2.0",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
     "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0"
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0"
   }
 }
 </script>
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./service-worker.js')
-        .then(registration => {
-          console.log('ServiceWorker registration successful with scope: ', registration.scope);
-        }, err => {
-          console.log('ServiceWorker registration failed: ', err);
+</head>" section:
+            <script>window.GEMINI_API_KEY = "YOUR_ACTUAL_API_KEY_HERE";</script>
+         4. Alternatively, the app will ask the user to enter the key manually via a UI modal.
+    -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./service-worker.js')
+            .then(reg => console.log('SW Registered', reg.scope))
+            .catch(err => console.log('SW Failed', err));
         });
-    });
-  }
-</script>
+      }
+    </script>
 </head>
-  <body>
-    <div id="root"></div>
-  </body>
+<body class="min-h-screen font-sans text-slate-800 pb-24 selection:bg-indigo-200">
+
+    <!-- Offline Banner -->
+    <div id="offline-banner" class="hidden bg-slate-800 text-slate-200 px-4 py-2 text-xs font-bold text-center sticky top-0 z-50">
+        You are offline. AI features unavailable.
+    </div>
+
+    <!-- Header -->
+    <header class="sticky top-0 z-20 glass border-b border-white/50 shadow-sm transition-all" id="main-header">
+        <div class="max-w-3xl mx-auto px-5 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 bg-gradient-to-tr from-indigo-600 to-violet-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg>
+                </div>
+                <div>
+                    <h1 class="font-extrabold text-xl tracking-tight text-slate-800 leading-none">To Do List</h1>
+                    <p class="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">AI Task Manager</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <button id="settings-btn" class="p-2 text-slate-400 hover:text-indigo-600 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+                <div class="text-right hidden sm:block">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider" id="date-weekday">Weekday</p>
+                    <p class="text-sm font-bold text-slate-700" id="date-full">Date</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-3xl mx-auto px-4 py-6">
+        <!-- Progress Section -->
+        <div class="mb-8 animate-slide-up">
+            <div class="flex justify-between items-center px-1">
+                <div>
+                    <h2 class="text-3xl font-black text-slate-800">My Tasks</h2>
+                    <p class="text-slate-500 font-medium"><span id="pending-count">0</span> pending tasks</p>
+                </div>
+                <!-- Circular Progress (Radius 33) -->
+                <div class="relative w-24 h-24 flex items-center justify-center bg-white rounded-full shadow-sm border border-slate-100">
+                    <svg height="72" width="72" class="rotate-[-90deg] transform">
+                        <circle stroke="#e2e8f0" stroke-width="6" fill="transparent" r="30" cx="36" cy="36" />
+                        <circle id="progress-ring" stroke="currentColor" class="text-indigo-600 transition-all duration-1000 ease-out" stroke-width="6" stroke-dasharray="188.5" stroke-dashoffset="188.5" stroke-linecap="round" fill="transparent" r="30" cx="36" cy="36" />
+                    </svg>
+                    <div class="absolute inset-0 flex items-center justify-center flex-col leading-none">
+                        <span class="text-xl font-black text-slate-800" id="progress-text">0%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="sticky top-[4.5rem] z-10 bg-transparent py-2 mb-2 -mx-4 px-4 overflow-x-auto no-scrollbar" id="filter-bar">
+            <div class="flex gap-2 min-w-max" id="filters">
+                <button data-filter="active" class="filter-btn px-5 py-2 text-sm font-bold rounded-full capitalize transition-all duration-300 shadow-sm bg-indigo-600 text-white shadow-indigo-500/30 scale-105">Active</button>
+                <button data-filter="all" class="filter-btn px-5 py-2 text-sm font-bold rounded-full capitalize transition-all duration-300 shadow-sm bg-white text-slate-500 border border-white/50 hover:bg-white/80">All</button>
+                <button data-filter="completed" class="filter-btn px-5 py-2 text-sm font-bold rounded-full capitalize transition-all duration-300 shadow-sm bg-white text-slate-500 border border-white/50 hover:bg-white/80">Completed</button>
+            </div>
+        </div>
+
+        <!-- Task List -->
+        <div id="task-list" class="space-y-4 pb-24 min-h-[300px]">
+            <!-- Tasks will be injected here -->
+        </div>
+    </main>
+
+    <!-- Floating Action Button -->
+    <button id="fab-add" class="fixed bottom-6 right-6 z-30 group flex items-center justify-center w-16 h-16 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-full shadow-xl shadow-indigo-500/40 transition-all duration-300 hover:scale-110 hover:shadow-indigo-500/60 active:scale-95">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="group-hover:rotate-90 transition-transform duration-300"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+    </button>
+
+    <!-- Add Task Modal -->
+    <div id="add-modal" class="fixed inset-0 z-40 hidden">
+        <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" id="add-modal-backdrop"></div>
+        <div class="absolute bottom-0 left-0 right-0 md:top-1/2 md:left-1/2 md:bottom-auto md:w-full md:max-w-lg md:-translate-x-1/2 md:-translate-y-1/2 p-4 animate-slide-up">
+            <div class="bg-white rounded-3xl shadow-2xl overflow-hidden ring-4 ring-indigo-50/50">
+                <div class="bg-gradient-to-r from-violet-600 via-indigo-600 to-blue-600 p-5 flex justify-between items-center text-white relative overflow-hidden">
+                    <div class="absolute top-[-50%] left-[-10%] w-32 h-32 rounded-full bg-white/10 blur-xl"></div>
+                    <div class="flex items-center gap-2 relative z-10">
+                        <div class="bg-white/20 p-2 rounded-xl backdrop-blur-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-lg leading-tight">New Task</h3>
+                            <p class="text-xs text-indigo-100 font-medium">Quick add or AI breakdown</p>
+                        </div>
+                    </div>
+                    <button id="close-modal" class="relative z-10 bg-white/10 p-2 rounded-full hover:bg-white/20 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    </button>
+                </div>
+                
+                <div class="p-6">
+                    <!-- Input State -->
+                    <div id="modal-input-state">
+                        <label class="block text-sm font-bold text-slate-700 mb-2">What do you need to get done?</label>
+                        <input type="text" id="task-input" placeholder="e.g., 'Buy groceries' or 'Plan vacation'" class="w-full pl-5 pr-4 py-4 text-lg bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all placeholder:text-slate-400 mb-6" />
+                        
+                        <div class="grid grid-cols-2 gap-3">
+                            <button id="btn-quick-add" class="flex items-center justify-center px-5 py-3 rounded-full font-bold bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 active:scale-95 transition-all">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 text-indigo-500"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                                Quick Add
+                            </button>
+                            <button id="btn-breakdown" class="flex items-center justify-center px-5 py-3 rounded-full font-bold bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-lg shadow-indigo-500/30 hover:from-indigo-600 hover:to-violet-700 active:scale-95 transition-all">
+                                <svg id="sparkle-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M9 3v4"/><path d="M3 9h4"/></svg>
+                                <span id="breakdown-text">Break Down</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- AI Loading State -->
+                    <div id="modal-loading-state" class="hidden flex-col items-center justify-center py-8">
+                        <div class="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+                        <p class="font-bold text-slate-600">Thinking...</p>
+                        <p class="text-xs text-slate-400">Consulting Gemini AI</p>
+                    </div>
+
+                    <!-- Preview State -->
+                    <div id="modal-preview-state" class="hidden space-y-4">
+                        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                            <label class="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-1 block">Title</label>
+                            <input id="preview-title" class="block w-full text-xl font-bold text-slate-800 bg-transparent border-none focus:ring-0 p-0" />
+                        </div>
+                        
+                        <div>
+                            <label class="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-2 block">Priority</label>
+                            <div class="grid grid-cols-3 gap-2" id="priority-selector">
+                                <!-- Generated by JS -->
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-2 block">Steps</label>
+                            <ul id="preview-steps" class="space-y-2 max-h-40 overflow-y-auto pr-2">
+                                <!-- Generated by JS -->
+                            </ul>
+                        </div>
+
+                        <div class="flex gap-3 pt-2">
+                            <button id="btn-back" class="flex-1 py-3 rounded-full font-bold bg-white text-slate-700 border border-slate-200 hover:bg-slate-50">Back</button>
+                            <button id="btn-confirm-ai" class="flex-[2] py-3 rounded-full font-bold bg-indigo-600 text-white shadow-lg hover:bg-indigo-700">Add Task</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- API Key Modal -->
+    <div id="key-modal" class="fixed inset-0 z-[60] hidden">
+        <div class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm"></div>
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm p-6">
+            <div class="bg-white rounded-2xl shadow-2xl p-6 text-center">
+                <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+                </div>
+                <h3 class="text-lg font-bold text-slate-800 mb-2">Gemini API Key Required</h3>
+                <p class="text-sm text-slate-500 mb-4">To use AI features, please enter your Google Gemini API key. It will be stored locally on your device.</p>
+                <input type="password" id="api-key-input" placeholder="Paste API Key here" class="w-full p-3 border border-slate-200 rounded-xl mb-4 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none" />
+                <div class="flex gap-2">
+                    <button id="btn-save-key" class="flex-1 bg-indigo-600 text-white py-2 rounded-xl font-bold hover:bg-indigo-700">Save</button>
+                    <button id="btn-cancel-key" class="px-4 py-2 text-slate-400 hover:text-slate-600 font-bold">Cancel</button>
+                </div>
+                <p class="text-xs text-slate-400 mt-4"><a href="https://aistudio.google.com/app/apikey" target="_blank" class="underline hover:text-indigo-500">Get a key from Google AI Studio</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="./script.js"></script>
+</body>
 </html>

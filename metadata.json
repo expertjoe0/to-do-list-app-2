@@ -1,0 +1,5 @@
+{
+  "name": "To Do List - AI Powered",
+  "description": "A smart, minimalist daily task manager that uses Gemini AI to break down complex goals into actionable steps.",
+  "requestFramePermissions": []
+}
